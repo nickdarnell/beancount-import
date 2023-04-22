@@ -145,11 +145,19 @@ class ImporterSource(DescriptionBasedSource):
                 entry.date,
                 source_posting.units,
                 entry.narration)
+    
+    def _balance_amounts_if_needed(self, txn:Transaction)-> None:
+        # Only try and balance transactions with less than 2 postings.
+        if len(txn.postings) < 2:
+            balance_amounts(txn)
 
     def _make_import_result(self, imported_entry:Directive):
-        if isinstance(imported_entry, Transaction): balance_amounts(imported_entry)
+        if isinstance(imported_entry, Transaction):
+            self._balance_amounts_if_needed(imported_entry)
+        
         result = ImportResult(
             date=imported_entry.date, info=get_info(imported_entry), entries=[imported_entry])
+        
         # delete filename since it is used by beancount-import to determine if the
         # entry is from journal.
         imported_entry.meta.pop('filename')
