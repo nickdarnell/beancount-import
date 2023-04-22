@@ -29,7 +29,7 @@ from beancount.parser.booking_full import convert_costspec_to_cost
 from ..matching import FIXME_ACCOUNT, SimpleInventory
 from . import ImportResult, SourceResults
 from ..journal_editor import JournalEditor
-from .description_based_source import DescriptionBasedSource, get_pending_and_invalid_entries, get_account_mapping
+from .description_based_source import DescriptionBasedSource, get_pending_and_invalid_entries, get_account_mapping, get_posting_source_descs
 
 
 class ImporterSource(DescriptionBasedSource):
@@ -141,10 +141,11 @@ class ImporterSource(DescriptionBasedSource):
         source_posting = self._get_source_posting(entry)
         if source_posting is None:
             raise ValueError("entry {} has no postings for account: {}".format(entry, self.account))
-        return (self.account,
-                entry.date,
+        source_posting_desc, source_posting_date = get_posting_source_descs(source_posting)
+        return (source_posting.account,
+                source_posting_date,
                 source_posting.units,
-                entry.narration)
+                source_posting_desc)
     
     def _balance_amounts_if_needed(self, txn:Transaction)-> None:
         # Only try and balance transactions with less than 2 postings.
