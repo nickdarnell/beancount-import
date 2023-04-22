@@ -141,11 +141,11 @@ class ImporterSource(DescriptionBasedSource):
         source_posting = self._get_source_posting(entry)
         if source_posting is None:
             raise ValueError("entry {} has no postings for account: {}".format(entry, self.account))
-        source_posting_desc, source_posting_date = get_posting_source_descs(source_posting)
-        return (source_posting.account,
-                source_posting_date,
-                source_posting.units,
-                source_posting_desc)
+        for source_posting_desc, source_posting_date in get_posting_source_descs(source_posting):
+            return (source_posting.account,
+                    source_posting_date,
+                    source_posting.units,
+                    source_posting_desc)
     
     def _balance_amounts_if_needed(self, txn:Transaction)-> None:
         # Only try and balance transactions with less than 2 postings.
