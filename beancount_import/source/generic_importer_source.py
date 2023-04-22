@@ -122,6 +122,9 @@ class ImporterSource(DescriptionBasedSource):
 
     def _get_source_posting(self, entry:Transaction) -> Optional[Posting]:
         for posting in entry.postings:
+            if not posting.meta:
+                continue
+            
             if posting.account.startswith(self.account):
                 return posting
         return None
