@@ -13,6 +13,7 @@ Author: Sufiyan Adhikari(github.com/dumbPy)
 """
 
 import os
+import datetime
 from glob import glob
 from collections import OrderedDict
 import itertools
@@ -28,8 +29,7 @@ from beancount.parser.booking_full import convert_costspec_to_cost
 from ..matching import FIXME_ACCOUNT, SimpleInventory
 from . import ImportResult, SourceResults
 from ..journal_editor import JournalEditor
-from .description_based_source import DescriptionBasedSource, get_pending_and_invalid_entries
-from .mint import _get_key_from_posting
+from .description_based_source import DescriptionBasedSource, get_pending_and_invalid_entries, get_account_mapping
 
 
 class ImporterSource(DescriptionBasedSource):
@@ -77,14 +77,29 @@ class ImporterSource(DescriptionBasedSource):
                     n = len(entries[key_])
                 entries.setdefault(key_, []).extend(hashed_entries[key_][n:])
 
+        raw_entries = list(itertools.chain.from_iterable(entries.values()))
+
         get_pending_and_invalid_entries(
-            raw_entries=list(itertools.chain.from_iterable(entries.values())),
+            raw_entries=raw_entries,
             journal_entries=journal.all_entries,
-            account_set=set([self.account]),
-            get_key_from_posting=_get_key_from_posting,
+            account_set=self.get_source_accounts(journal, raw_entries),
+            get_key_from_posting=self._get_key_from_posting,
             get_key_from_raw_entry=self._get_key_from_imported_entry,
             make_import_result=self._make_import_result,
             results=results)
+        
+    def get_source_accounts(self, journal: 'JournalEditor', raw_entries):
+        accounts = set([self.account])
+    
+        for raw_entry in raw_entries:
+            if not isinstance(raw_entry, Transaction):
+                continue
+        
+            for posting in raw_entry.postings:
+                if posting.account.startswith(self.account):
+                    accounts.add(posting.account)
+        
+        return accounts
 
     def _add_description(self, entry: Transaction):
         if not isinstance(entry, Transaction): return None
@@ -107,9 +122,16 @@ class ImporterSource(DescriptionBasedSource):
 
     def _get_source_posting(self, entry:Transaction) -> Optional[Posting]:
         for posting in entry.postings:
-            if posting.account == self.account:
+            if posting.account.startswith(self.account):
                 return posting
         return None
+    
+    def _get_key_from_posting(self, entry: Transaction, posting: Posting,
+                                source_postings: List[Posting], source_desc: str,
+                                posting_date: datetime.date):
+        del entry
+        del source_postings
+        return (posting.account, posting_date, posting.units, source_desc)
 
     def _get_key_from_imported_entry(self, entry:Directive) -> Hashable:
         if isinstance(entry, Balance):
